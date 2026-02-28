@@ -44,8 +44,20 @@ export const updateUserSchema = registerSchema
 	.omit({ phoneNumber: true })
 	.partial();
 
+/** MongoDB ObjectId hex string (24 chars). */
+const mongoIdSchema = z
+	.string()
+	.length(24)
+	.regex(/^[a-f0-9]+$/i);
+
+/** Complete onboarding: same as register + userId (from verify-otp; may be PendingOnboarding id or User id). */
+export const completeOnboardingSchema = registerSchema.extend({
+	userId: mongoIdSchema,
+});
+
 export type SendOtpBody = z.output<typeof sendOtpSchema>;
 export type VerifyOtpBody = z.output<typeof verifyOtpSchema>;
 export type LoginBody = z.output<typeof loginSchema>;
 export type RegisterBody = z.output<typeof registerSchema>;
+export type CompleteOnboardingBody = z.output<typeof completeOnboardingSchema>;
 export type UpdateUserBody = z.output<typeof updateUserSchema>;

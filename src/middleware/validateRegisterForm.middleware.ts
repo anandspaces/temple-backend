@@ -1,7 +1,13 @@
 import type { NextFunction, Request, Response } from "express";
 import logger from "../config/logger.ts";
-import type { RegisterBody } from "../schemas/auth.schemas.ts";
-import { registerSchema } from "../schemas/auth.schemas.ts";
+import type {
+	CompleteOnboardingBody,
+	RegisterBody,
+} from "../schemas/auth.schemas.ts";
+import {
+	completeOnboardingSchema,
+	registerSchema,
+} from "../schemas/auth.schemas.ts";
 
 function stringOrEmpty(value: unknown): string {
 	if (value == null) return "";
@@ -42,6 +48,49 @@ export function validateRegisterForm(
 		return res.status(400).json({ success: false, error: message });
 	}
 	(req as Request & { validatedBody: RegisterBody }).validatedBody =
+		result.data;
+	next();
+}
+
+/** Same as register form but requires userId (from verify-otp). Use for POST /auth/complete-onboarding. */
+export function validateCompleteOnboardingForm(
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) {
+	const body = req.body as Record<string, unknown>;
+	const emergencyContact = {
+		name: stringOrEmpty(body.emergencyContactName),
+		phone: stringOrEmpty(body.emergencyContactPhone),
+	};
+	const medicalConditionsRaw = stringOrEmpty(body.medicalConditions);
+	const medicalConditions = medicalConditionsRaw
+		? medicalConditionsRaw
+				.split(",")
+				.map((s) => s.trim())
+				.filter(Boolean)
+		: [];
+	const formData = {
+		...body,
+		emergencyContact,
+		medicalConditions,
+		userId: stringOrEmpty(body.userId),
+	};
+
+	const result = completeOnboardingSchema.safeParse(formData);
+	if (!result.success) {
+		const err = result.error;
+		const message =
+			err.issues?.map((e) => e.message ?? "invalid").join("; ") ??
+			err.message ??
+			"Validation failed";
+		logger.warn(
+			{ path: req.path, message },
+			"Complete onboarding form validation failed",
+		);
+		return res.status(400).json({ success: false, error: message });
+	}
+	(req as Request & { validatedBody: CompleteOnboardingBody }).validatedBody =
 		result.data;
 	next();
 }

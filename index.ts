@@ -1,3 +1,4 @@
+import fs from "fs";
 import { connectDb } from "./src/config/db.ts";
 import { env } from "./src/config/env.ts";
 import logger from "./src/config/logger.ts";
@@ -12,6 +13,8 @@ async function main() {
 		logger.error({ err }, "MongoDB connection failed");
 		process.exit(1);
 	}
+	fs.mkdirSync("uploads", { recursive: true });
+	logger.info("Uploads directory ready");
 	const app = createApp();
 	app.listen(env.PORT, () => {
 		logger.info({ port: env.PORT }, "Server running");
@@ -32,12 +35,10 @@ export function createApp() {
 	app.use(requestLogger);
 
 	app.get("/", (_req, res) => {
-		res.send("Temple Backend running with Bun");
-	});
-	app.get("/health", (_req, res) => {
-		res.json({ status: "ok" });
+		res.send("Temple Backend running with Bun😊");
 	});
 
+	app.use("/uploads", express.static("uploads"));
 	app.use("/auth", authRoutes);
 	app.use("/users", userRoutes);
 

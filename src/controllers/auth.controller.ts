@@ -1,7 +1,12 @@
 import type { Request, Response } from "express";
+import mongoose from "mongoose";
 import logger from "../config/logger.ts";
+import { PendingOnboarding } from "../models/PendingOnboarding.ts";
 import { User } from "../models/User.ts";
-import type { RegisterBody } from "../schemas/auth.schemas.ts";
+import type {
+	CompleteOnboardingBody,
+	RegisterBody,
+} from "../schemas/auth.schemas.ts";
 import { storeFile } from "../services/fileUpload.service.ts";
 import {
 	generateAndStore,
@@ -10,6 +15,7 @@ import {
 } from "../services/otp.service.ts";
 import { signToken } from "../services/token.service.ts";
 import { apiError, apiSuccess } from "../types/types.ts";
+import { toAbsoluteUrl } from "../services/url.service.ts";
 
 function maskPhone(phone: string): string {
 	if (phone.length <= 4) return "****";
@@ -27,6 +33,16 @@ type ReqWithRegister = Request & {
 		profileAvatar?: Express.Multer.File[];
 	};
 };
+
+type ReqWithCompleteOnboarding = Request & {
+	validatedBody?: CompleteOnboardingBody;
+	files?: {
+		aadhaarFile?: Express.Multer.File[];
+		profileAvatar?: Express.Multer.File[];
+	};
+};
+
+const PENDING_TTL_MS = 15 * 60 * 1000;
 
 async function getFileUrls(
 	files: ReqWithRegister["files"],
@@ -47,63 +63,143 @@ async function getFileUrls(
 }
 
 export async function sendOtp(req: ReqWithValidated, res: Response) {
-	const { phoneNumber } = req.validatedBody!;
+	const body = req.validatedBody;
+	if (!body) return res.status(400).json(apiError("Missing request body"));
+	const { phoneNumber } = body;
 	await generateAndStore(phoneNumber);
 	logger.info({ phone: maskPhone(phoneNumber) }, "OTP sent");
 	return res.status(200).json(apiSuccess({ message: "OTP sent" }));
 }
 
-/** Registration only: confirms phone so user can complete profile. Does NOT issue access token. */
+/**
+ * Verify OTP: decides register vs login.
+ * - New phone: create/update PendingOnboarding, return userId (pending id), onboarding: false.
+ * - Existing user not onboarded: return userId, onboarding: false (resume).
+ * - User onboarded: login and return accessToken, user, onboarding: true.
+ */
 export async function verifyOtp(req: ReqWithValidated, res: Response) {
-	const { phoneNumber, otp } = req.validatedBody!;
-	const valid = verify(phoneNumber!, otp!);
+	const body = req.validatedBody;
+	if (!body?.phoneNumber || !body?.otp)
+		return res.status(400).json(apiError("Missing phoneNumber or otp"));
+	const { phoneNumber, otp } = body;
+	const valid = verify(phoneNumber, otp);
 	if (!valid) {
 		logger.warn(
-			{ phone: maskPhone(phoneNumber!) },
+			{ phone: maskPhone(phoneNumber) },
 			"Verify OTP failed: invalid or expired",
 		);
 		return res.status(400).json(apiError("Invalid or expired OTP"));
 	}
 	markPhoneVerifiedForRegistration(phoneNumber);
-	const userDoc = await User.findOne().where("phoneNumber", phoneNumber!);
-	if (userDoc) {
-		userDoc.isPhoneVerified = true;
-		await userDoc.save();
+
+	const userDoc = await User.findOne().where("phoneNumber", phoneNumber);
+
+	if (!userDoc) {
+		const expiresAt = new Date(Date.now() + PENDING_TTL_MS);
+		let pending = await PendingOnboarding.findOne().where(
+			"phoneNumber",
+			phoneNumber,
+		);
+		if (pending) {
+			pending.expiresAt = expiresAt;
+			await pending.save();
+		} else {
+			pending = await PendingOnboarding.create({
+				phoneNumber,
+				verifiedAt: new Date(),
+				expiresAt,
+			});
+		}
+		logger.info(
+			{ userId: pending._id, phone: maskPhone(phoneNumber) },
+			"Verify OTP: pending onboarding created/updated",
+		);
+		return res.status(200).json(
+			apiSuccess({
+				userId: String(pending._id),
+				onboarding: false,
+			}),
+		);
 	}
+
+	userDoc.isPhoneVerified = true;
+	await userDoc.save();
+
+	if (userDoc.onboardingComplete) {
+		try {
+			const { accessToken, expiresIn } = await signToken({
+				userId: String(userDoc._id),
+				phoneNumber: userDoc.phoneNumber,
+			});
+			logger.info(
+				{ userId: userDoc._id, phone: maskPhone(phoneNumber) },
+				"Verify OTP: login success",
+			);
+			return res.status(200).json(
+				apiSuccess({
+					accessToken,
+					expiresIn,
+					user: userResponse(userDoc),
+					onboarding: true,
+				}),
+			);
+		} catch (err) {
+			logger.error({ err }, "Verify OTP: token signing failed");
+			return res
+				.status(500)
+				.json(apiError("Authentication configuration error"));
+		}
+	}
+
 	logger.info(
-		{ phone: maskPhone(phoneNumber) },
-		"Phone verified for registration",
+		{ userId: userDoc._id, phone: maskPhone(phoneNumber) },
+		"Verify OTP: existing user, onboarding required",
 	);
 	return res.status(200).json(
 		apiSuccess({
-			uid: userDoc?._id ?? null,
-			isVerified: true,
+			userId: String(userDoc._id),
+			onboarding: false,
 		}),
 	);
 }
 
 export async function login(req: ReqWithValidated, res: Response) {
-	const { phoneNumber, otp } = req.validatedBody!;
-	const valid = verify(phoneNumber!, otp!);
+	const body = req.validatedBody;
+	if (!body?.phoneNumber || !body?.otp)
+		return res.status(400).json(apiError("Missing phoneNumber or otp"));
+	const { phoneNumber, otp } = body;
+	const valid = verify(phoneNumber, otp);
 	if (!valid) {
 		logger.warn(
-			{ phone: maskPhone(phoneNumber!) },
+			{ phone: maskPhone(phoneNumber) },
 			"Login failed: invalid or expired OTP",
 		);
 		return res.status(401).json(apiError("Invalid or expired OTP"));
 	}
 	const user = await User.findOne()
-		.where("phoneNumber", phoneNumber!)
-		.select("_id fullName phoneNumber")
+		.where("phoneNumber", phoneNumber)
 		.lean();
 	if (!user) {
 		logger.warn(
-			{ phone: maskPhone(phoneNumber!) },
+			{ phone: maskPhone(phoneNumber) },
 			"Login failed: user not found",
 		);
 		return res
 			.status(404)
 			.json(apiError("User not found. Please register first."));
+	}
+	if (!user.onboardingComplete) {
+		logger.warn(
+			{ userId: user._id, phone: maskPhone(phoneNumber) },
+			"Login failed: onboarding not complete",
+		);
+		return res
+			.status(403)
+			.json(
+				apiError(
+					"Complete onboarding first. Use send-otp then verify-otp, then complete-onboarding.",
+				),
+			);
 	}
 	try {
 		const { accessToken, expiresIn } = await signToken({
@@ -111,18 +207,15 @@ export async function login(req: ReqWithValidated, res: Response) {
 			phoneNumber: user.phoneNumber,
 		});
 		logger.info(
-			{ userId: user._id, phone: maskPhone(phoneNumber!) },
+			{ userId: user._id, phone: maskPhone(phoneNumber) },
 			"Login success",
 		);
 		return res.status(200).json(
 			apiSuccess({
 				accessToken,
 				expiresIn,
-				user: {
-					id: user._id,
-					fullName: user.fullName,
-					phoneNumber: user.phoneNumber,
-				},
+				user: userResponse(user),
+				onboarding: true,
 			}),
 		);
 	} catch (err) {
@@ -131,85 +224,160 @@ export async function login(req: ReqWithValidated, res: Response) {
 	}
 }
 
-export async function register(req: ReqWithRegister, res: Response) {
-	const body = req.validatedBody!;
+/**
+ * Complete onboarding: for users who got onboarding: false from verify-otp.
+ * Accepts userId (same field for new = PendingOnboarding id, or resume = User id) + full profile. Returns access token on success.
+ */
+export async function completeOnboarding(
+	req: ReqWithCompleteOnboarding,
+	res: Response,
+) {
+	const body = req.validatedBody;
+	if (!body) return res.status(400).json(apiError("Missing request body"));
+	if (!body.userId) {
+		return res.status(400).json(apiError("userId required"));
+	}
 	const files = req.files ?? {};
+	const userIdParam = new mongoose.Types.ObjectId(body.userId);
 
-	const existing = await User.findOne().where("phoneNumber", body.phoneNumber);
+	const pending = await PendingOnboarding.findById(userIdParam);
+	if (pending) {
+		if (pending.expiresAt && new Date() > pending.expiresAt) {
+			await PendingOnboarding.findByIdAndDelete(userIdParam);
+			return res
+				.status(403)
+				.json(apiError("Verification expired. Please verify OTP again."));
+		}
+		if (pending.phoneNumber !== body.phoneNumber) {
+			return res
+				.status(403)
+				.json(apiError("Phone number does not match the verified phone"));
+		}
 
-	if (existing?.isPhoneVerified) {
 		const { aadhaarIdFileUrl, profileAvatarUrl } = await getFileUrls(files);
 		const email = (body.email ?? "").trim() || "";
-		existing.set({
+		const user = await User.create({
 			...body,
-			email: email || existing.email,
-			aadhaarIdFileUrl: aadhaarIdFileUrl || existing.aadhaarIdFileUrl,
-			profileAvatarUrl: profileAvatarUrl || existing.profileAvatarUrl,
+			email: email || "",
+			aadhaarIdFileUrl,
+			profileAvatarUrl,
+			isPhoneVerified: true,
+			onboardingComplete: true,
 		});
-		await existing.save();
+		await PendingOnboarding.findByIdAndDelete(userIdParam);
+
 		logger.info(
-			{ userId: existing._id, phone: maskPhone(body.phoneNumber) },
-			"Register success (update)",
+			{ userId: user._id, phone: maskPhone(body.phoneNumber) },
+			"Complete onboarding success (new user)",
 		);
-		return res.status(200).json(
-			apiSuccess({
-				uid: existing._id,
-				isVerified: true,
-				fullName: existing.fullName,
-				phoneNumber: existing.phoneNumber,
-				email: existing.email,
-				language: existing.language,
-				profileAvatarUrl: existing.profileAvatarUrl,
-			}),
-		);
+		try {
+			const { accessToken, expiresIn } = await signToken({
+				userId: String(user._id),
+				phoneNumber: user.phoneNumber,
+			});
+			return res.status(200).json(
+				apiSuccess({
+					accessToken,
+					expiresIn,
+					user: userResponse(user),
+					onboarding: true,
+				}),
+			);
+		} catch (err) {
+			logger.error({ err }, "Complete onboarding: token signing failed");
+			return res
+				.status(500)
+				.json(apiError("Authentication configuration error"));
+		}
 	}
 
-	if (existing && !existing.isPhoneVerified) {
-		await generateAndStore(body.phoneNumber);
-		logger.info(
-			{ phone: maskPhone(body.phoneNumber) },
-			"Register: OTP sent, awaiting verification",
-		);
-		return res.status(200).json(
-			apiSuccess({
-				uid: existing._id,
-				isVerified: false,
-				message: "OTP sent to your phone",
-				requireVerification: true,
-			}),
-		);
+	const user = await User.findById(userIdParam);
+	if (!user) {
+		return res.status(404).json(apiError("User not found"));
+	}
+	if (!user.isPhoneVerified) {
+		return res
+			.status(403)
+			.json(
+				apiError("Phone not verified. Use send-otp then verify-otp first."),
+			);
+	}
+	if (user.onboardingComplete) {
+		try {
+			const { accessToken, expiresIn } = await signToken({
+				userId: String(user._id),
+				phoneNumber: user.phoneNumber,
+			});
+			return res
+				.status(200)
+				.json(apiSuccess({ accessToken, expiresIn, user: userResponse(user) }));
+		} catch {
+			return res
+				.status(500)
+				.json(apiError("Authentication configuration error"));
+		}
+	}
+	if (user.phoneNumber !== body.phoneNumber) {
+		return res
+			.status(403)
+			.json(apiError("Phone number does not match the verified user"));
 	}
 
 	const { aadhaarIdFileUrl, profileAvatarUrl } = await getFileUrls(files);
 	const email = (body.email ?? "").trim() || "";
-
-	const user = await User.create({
+	user.set({
 		...body,
-		email,
-		aadhaarIdFileUrl,
-		profileAvatarUrl,
-		isPhoneVerified: false,
+		email: email || user.email,
+		aadhaarIdFileUrl: aadhaarIdFileUrl || user.aadhaarIdFileUrl,
+		profileAvatarUrl: profileAvatarUrl || user.profileAvatarUrl,
+		onboardingComplete: true,
 	});
+	await user.save();
 
-	if (!user) {
-		logger.error(
-			{ phone: maskPhone(body.phoneNumber) },
-			"Register failed: user create returned null",
-		);
-		return res.status(500).json(apiError("Failed to create user"));
-	}
-
-	await generateAndStore(body.phoneNumber);
 	logger.info(
 		{ userId: user._id, phone: maskPhone(body.phoneNumber) },
-		"Register: OTP sent, awaiting verification",
+		"Complete onboarding success (resume)",
 	);
-	return res.status(200).json(
-		apiSuccess({
-			uid: user._id,
-			isVerified: false,
-			message: "OTP sent to your phone",
-			requireVerification: true,
-		}),
-	);
+	try {
+		const { accessToken, expiresIn } = await signToken({
+			userId: String(user._id),
+			phoneNumber: user.phoneNumber,
+		});
+		return res.status(200).json(
+			apiSuccess({
+				accessToken,
+				expiresIn,
+				user: userResponse(user),
+				onboarding: true,
+			}),
+		);
+	} catch (err) {
+		logger.error({ err }, "Complete onboarding: token signing failed");
+		return res.status(500).json(apiError("Authentication configuration error"));
+	}
+}
+
+function userResponse(user: InstanceType<typeof User> | { _id: unknown; fullName: string; phoneNumber: string; email?: string; language?: string; profileAvatarUrl?: string }) {
+	return {
+		id: user._id,
+		fullName: user.fullName,
+		phoneNumber: user.phoneNumber,
+		email: user.email ?? "",
+		language: user.language ?? "",
+		profileAvatarUrl: toAbsoluteUrl(user.profileAvatarUrl ?? ""),
+	};
+}
+
+/**
+ * Deprecated: use send-otp → verify-otp → complete-onboarding instead.
+ * Returns 400 directing client to the new flow.
+ */
+export async function register(_req: ReqWithRegister, res: Response) {
+	return res
+		.status(400)
+		.json(
+			apiError(
+				"Use send-otp, then verify-otp. If onboarding is required, call complete-onboarding with the returned userId and your profile.",
+			),
+		);
 }

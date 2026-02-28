@@ -4,6 +4,7 @@ import type { RequestWithAuth } from "../middleware/auth.middleware.ts";
 import { User } from "../models/User.ts";
 import type { UpdateUserBody } from "../schemas/auth.schemas.ts";
 import { apiError, apiSuccess } from "../types/types.ts";
+import { toAbsoluteUrl } from "../services/url.service.ts";
 
 type ReqWithUpdateBody = RequestWithAuth & { validatedBody?: UpdateUserBody };
 
@@ -28,7 +29,12 @@ export async function getMe(req: RequestWithAuth, res: Response) {
 		return res.status(404).json(apiError("User not found"));
 	}
 	logger.info({ userId }, "getMe success");
-	return res.status(200).json(apiSuccess(user));
+	const withAbsoluteUrls = {
+		...user,
+		profileAvatarUrl: toAbsoluteUrl(user.profileAvatarUrl ?? ""),
+		aadhaarIdFileUrl: toAbsoluteUrl(user.aadhaarIdFileUrl ?? ""),
+	};
+	return res.status(200).json(apiSuccess(withAbsoluteUrls));
 }
 
 export async function updateMe(req: ReqWithUpdateBody, res: Response) {
@@ -42,7 +48,12 @@ export async function updateMe(req: ReqWithUpdateBody, res: Response) {
 		return res.status(404).json(apiError("User not found"));
 	}
 	logger.info({ userId }, "updateMe success");
-	return res.status(200).json(apiSuccess(updated));
+	const withAbsoluteUrls = {
+		...updated,
+		profileAvatarUrl: toAbsoluteUrl(updated.profileAvatarUrl ?? ""),
+		aadhaarIdFileUrl: toAbsoluteUrl(updated.aadhaarIdFileUrl ?? ""),
+	};
+	return res.status(200).json(apiSuccess(withAbsoluteUrls));
 }
 
 export async function deleteMe(req: RequestWithAuth, res: Response) {

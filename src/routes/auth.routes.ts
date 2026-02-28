@@ -1,21 +1,26 @@
 /**
  * Auth routes (mount at /auth).
- * - POST /register      – multipart form: start or complete registration; sends OTP if phone not verified.
- * - POST /send-otp      – send OTP to phone (no token).
- * - POST /verify-otp    – registration only: confirm phone, set isPhoneVerified (no token).
- * - POST /register/verify-otp – alias for verify-otp (registration flow).
- * - POST /login         – sign-in with phone + OTP; returns accessToken, expiresIn, user.
+ * - POST /send-otp            – send OTP to phone (no token).
+ * - POST /verify-otp          – verify OTP; returns userId + onboarding: false or accessToken + user (if onboarded).
+ * - POST /register/verify-otp – alias for verify-otp.
+ * - POST /complete-onboarding  – complete profile for userId from verify-otp; returns accessToken, user.
+ * - POST /register            – deprecated; returns 400 (use send-otp → verify-otp → complete-onboarding).
+ * - POST /login               – sign-in with phone + OTP (onboarded users only); returns accessToken, user.
  */
 import express = require("express");
 
 import {
+	completeOnboarding,
 	login,
 	register,
 	sendOtp,
 	verifyOtp,
 } from "../controllers/auth.controller.ts";
 import { registerUpload } from "../middleware/upload.middleware.ts";
-import { validateRegisterForm } from "../middleware/validateRegisterForm.middleware.ts";
+import {
+	validateCompleteOnboardingForm,
+	validateRegisterForm,
+} from "../middleware/validateRegisterForm.middleware.ts";
 import { validateBody } from "../middleware/validation.middleware.ts";
 import {
 	loginSchema,
@@ -25,7 +30,6 @@ import {
 
 export const authRoutes = express.Router();
 
-authRoutes.post("/register", registerUpload, validateRegisterForm, register);
 authRoutes.post("/send-otp", validateBody(sendOtpSchema), sendOtp);
 authRoutes.post("/verify-otp", validateBody(verifyOtpSchema), verifyOtp);
 authRoutes.post(
@@ -33,4 +37,11 @@ authRoutes.post(
 	validateBody(verifyOtpSchema),
 	verifyOtp,
 );
+authRoutes.post(
+	"/complete-onboarding",
+	registerUpload,
+	validateCompleteOnboardingForm,
+	completeOnboarding,
+);
+authRoutes.post("/register", registerUpload, validateRegisterForm, register);
 authRoutes.post("/login", validateBody(loginSchema), login);
