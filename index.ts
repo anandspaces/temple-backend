@@ -1,9 +1,9 @@
 import { connectDb } from "./src/config/db.ts";
 import { env } from "./src/config/env.ts";
 import logger from "./src/config/logger.ts";
+import { requestLogger } from "./src/middleware/requestLogger.middleware.ts";
 import { authRoutes } from "./src/routes/auth.routes.ts";
 import { userRoutes } from "./src/routes/user.routes.ts";
-import { requestLogger } from "./src/middleware/requestLogger.middleware.ts";
 
 async function main() {
 	try {
@@ -23,6 +23,7 @@ main().catch((err) => {
 	process.exit(1);
 });
 import express = require("express");
+
 import multer from "multer";
 
 export function createApp() {

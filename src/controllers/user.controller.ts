@@ -1,9 +1,9 @@
 import type { Response } from "express";
-import { User } from "../models/User.ts";
-import type { RequestWithAuth } from "../middleware/auth.middleware.ts";
-import type { UpdateUserBody } from "../schemas/auth.schemas.ts";
-import { apiSuccess, apiError } from "../types/types.ts";
 import logger from "../config/logger.ts";
+import type { RequestWithAuth } from "../middleware/auth.middleware.ts";
+import { User } from "../models/User.ts";
+import type { UpdateUserBody } from "../schemas/auth.schemas.ts";
+import { apiError, apiSuccess } from "../types/types.ts";
 
 type ReqWithUpdateBody = RequestWithAuth & { validatedBody?: UpdateUserBody };
 

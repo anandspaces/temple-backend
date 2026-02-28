@@ -1,6 +1,6 @@
-import type { Request, Response, NextFunction } from "express";
-import { isPhoneVerifiedForRegistration } from "../services/otp.service.ts";
+import type { NextFunction, Request, Response } from "express";
 import logger from "../config/logger.ts";
+import { isPhoneVerifiedForRegistration } from "../services/otp.service.ts";
 
 function maskPhone(phone: string): string {
 	if (phone.length <= 4) return "****";
@@ -27,12 +27,10 @@ export function requirePhoneVerified(
 			{ path: req.path, phone: maskPhone(phoneNumber) },
 			"Phone not verified for registration",
 		);
-		return res
-			.status(401)
-			.json({
-				success: false,
-				error: "Phone number not verified. Complete OTP verification first.",
-			});
+		return res.status(401).json({
+			success: false,
+			error: "Phone number not verified. Complete OTP verification first.",
+		});
 	}
 	next();
 }

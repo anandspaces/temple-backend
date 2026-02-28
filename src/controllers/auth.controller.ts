@@ -1,15 +1,15 @@
 import type { Request, Response } from "express";
+import logger from "../config/logger.ts";
+import { User } from "../models/User.ts";
+import type { RegisterBody } from "../schemas/auth.schemas.ts";
+import { storeFile } from "../services/fileUpload.service.ts";
 import {
 	generateAndStore,
-	verify,
 	markPhoneVerifiedForRegistration,
+	verify,
 } from "../services/otp.service.ts";
 import { signToken } from "../services/token.service.ts";
-import { User } from "../models/User.ts";
-import { storeFile } from "../services/fileUpload.service.ts";
-import type { RegisterBody } from "../schemas/auth.schemas.ts";
-import { apiSuccess, apiError } from "../types/types.ts";
-import logger from "../config/logger.ts";
+import { apiError, apiSuccess } from "../types/types.ts";
 
 function maskPhone(phone: string): string {
 	if (phone.length <= 4) return "****";

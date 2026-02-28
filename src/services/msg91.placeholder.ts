@@ -1,5 +1,5 @@
-import type { OtpProvider } from "./otp.service.ts";
 import logger from "../config/logger.ts";
+import type { OtpProvider } from "./otp.service.ts";
 
 /**
  * Placeholder for MSG91 SMS provider.

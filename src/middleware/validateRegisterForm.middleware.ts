@@ -1,7 +1,7 @@
-import type { Request, Response, NextFunction } from "express";
-import { registerSchema } from "../schemas/auth.schemas.ts";
-import type { RegisterBody } from "../schemas/auth.schemas.ts";
+import type { NextFunction, Request, Response } from "express";
 import logger from "../config/logger.ts";
+import type { RegisterBody } from "../schemas/auth.schemas.ts";
+import { registerSchema } from "../schemas/auth.schemas.ts";
 
 function stringOrEmpty(value: unknown): string {
 	if (value == null) return "";

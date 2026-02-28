@@ -1,6 +1,6 @@
-import type { Request, Response, NextFunction } from "express";
-import { verifyToken } from "../services/token.service.ts";
+import type { NextFunction, Request, Response } from "express";
 import { User } from "../models/User.ts";
+import { verifyToken } from "../services/token.service.ts";
 import { apiError } from "../types/types.ts";
 
 export interface AuthenticatedUser {

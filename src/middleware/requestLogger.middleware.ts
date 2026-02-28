@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from "express";
+import type { NextFunction, Request, Response } from "express";
 import logger from "../config/logger.ts";
 
 export function requestLogger(req: Request, res: Response, next: NextFunction) {

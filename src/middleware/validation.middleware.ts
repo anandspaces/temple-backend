@@ -1,10 +1,8 @@
-import type { Request, Response, NextFunction } from "express";
+import type { NextFunction, Request, Response } from "express";
 import logger from "../config/logger.ts";
 
 type SchemaLike<T = unknown> = {
-	safeParse(
-		data: unknown,
-	):
+	safeParse(data: unknown):
 		| { success: true; data: T }
 		| {
 				success: false;

@@ -7,20 +7,21 @@
  * - POST /login         – sign-in with phone + OTP; returns accessToken, expiresIn, user.
  */
 import express = require("express");
-import { validateBody } from "../middleware/validation.middleware.ts";
-import { registerUpload } from "../middleware/upload.middleware.ts";
-import { validateRegisterForm } from "../middleware/validateRegisterForm.middleware.ts";
+
 import {
-	sendOtpSchema,
-	verifyOtpSchema,
-	loginSchema,
-} from "../schemas/auth.schemas.ts";
-import {
-	sendOtp,
-	verifyOtp,
 	login,
 	register,
+	sendOtp,
+	verifyOtp,
 } from "../controllers/auth.controller.ts";
+import { registerUpload } from "../middleware/upload.middleware.ts";
+import { validateRegisterForm } from "../middleware/validateRegisterForm.middleware.ts";
+import { validateBody } from "../middleware/validation.middleware.ts";
+import {
+	loginSchema,
+	sendOtpSchema,
+	verifyOtpSchema,
+} from "../schemas/auth.schemas.ts";
 
 export const authRoutes = express.Router();
 
