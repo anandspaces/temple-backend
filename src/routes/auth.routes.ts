@@ -10,13 +10,26 @@ import express = require("express");
 import { validateBody } from "../middleware/validation.middleware.ts";
 import { registerUpload } from "../middleware/upload.middleware.ts";
 import { validateRegisterForm } from "../middleware/validateRegisterForm.middleware.ts";
-import { sendOtpSchema, verifyOtpSchema, loginSchema } from "../schemas/auth.schemas.ts";
-import { sendOtp, verifyOtp, login, register } from "../controllers/auth.controller.ts";
+import {
+	sendOtpSchema,
+	verifyOtpSchema,
+	loginSchema,
+} from "../schemas/auth.schemas.ts";
+import {
+	sendOtp,
+	verifyOtp,
+	login,
+	register,
+} from "../controllers/auth.controller.ts";
 
 export const authRoutes = express.Router();
 
 authRoutes.post("/register", registerUpload, validateRegisterForm, register);
 authRoutes.post("/send-otp", validateBody(sendOtpSchema), sendOtp);
 authRoutes.post("/verify-otp", validateBody(verifyOtpSchema), verifyOtp);
-authRoutes.post("/register/verify-otp", validateBody(verifyOtpSchema), verifyOtp);
+authRoutes.post(
+	"/register/verify-otp",
+	validateBody(verifyOtpSchema),
+	verifyOtp,
+);
 authRoutes.post("/login", validateBody(loginSchema), login);

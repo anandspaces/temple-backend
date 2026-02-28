@@ -7,13 +7,13 @@ const JWT_SECRET = process.env.JWT_SECRET as string | undefined;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN as string | undefined;
 
 export const env = {
-  PORT: Number(PORT),
-  MONGO_URI,
-  OTP_EXPIRY_MINUTES: Number(OTP_EXPIRY_MINUTES),
-  LOG_LEVEL: LOG_LEVEL || undefined,
-  /** When set (e.g. "123456"), this OTP is used for all send-otp/register flows for testing. */
-  TEST_OTP: TEST_OTP && TEST_OTP.length >= 6 ? TEST_OTP : undefined,
-  JWT_SECRET: JWT_SECRET || undefined,
-  /** JWT access token expiry (e.g. "7d", "24h"). Default "7d". */
-  JWT_EXPIRES_IN: JWT_EXPIRES_IN || "7d",
+	PORT: Number(PORT),
+	MONGO_URI,
+	OTP_EXPIRY_MINUTES: Number(OTP_EXPIRY_MINUTES),
+	LOG_LEVEL: LOG_LEVEL || undefined,
+	/** When set (e.g. "123456"), this OTP is used for all send-otp/register flows for testing. */
+	TEST_OTP: TEST_OTP && TEST_OTP.length >= 6 ? TEST_OTP : undefined,
+	JWT_SECRET: JWT_SECRET || undefined,
+	/** JWT access token expiry (e.g. "7d", "24h"). Default "7d". */
+	JWT_EXPIRES_IN: JWT_EXPIRES_IN || "7d",
 } as const;
