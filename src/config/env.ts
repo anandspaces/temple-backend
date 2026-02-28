@@ -5,6 +5,7 @@ const LOG_LEVEL = process.env.LOG_LEVEL as string;
 const TEST_OTP = process.env.TEST_OTP as string | undefined;
 const JWT_SECRET = process.env.JWT_SECRET as string | undefined;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN as string | undefined;
+const API_BASE_URL = process.env.API_BASE_URL as string | undefined;
 
 export const env = {
 	PORT: Number(PORT),
@@ -16,4 +17,6 @@ export const env = {
 	JWT_SECRET: JWT_SECRET || undefined,
 	/** JWT access token expiry (e.g. "7d", "24h"). Default "7d". */
 	JWT_EXPIRES_IN: JWT_EXPIRES_IN || "7d",
+	/** Backend base URL for absolute file URLs (e.g. https://api.example.com). When set, profileAvatarUrl and aadhaarIdFileUrl in responses are prefixed with this. */
+	API_BASE_URL: API_BASE_URL?.replace(/\/$/, "") || "",
 } as const;
