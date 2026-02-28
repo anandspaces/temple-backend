@@ -2,8 +2,8 @@ import mongoose, { model, Schema } from "mongoose";
 
 const emergencyContactSchema = new Schema(
 	{
-		name: { type: String, required: true },
-		phone: { type: String, required: true },
+		name: { type: String, default: "" },
+		phone: { type: String, default: "" },
 	},
 	{ _id: false },
 );
@@ -20,7 +20,7 @@ const userSchema = new Schema(
 		aadhaarIdFileUrl: { type: String, default: "" },
 		profileAvatarUrl: { type: String, default: "" },
 		medicalConditions: { type: [String], default: [] },
-		emergencyContact: { type: emergencyContactSchema, required: true },
+		emergencyContact: { type: emergencyContactSchema, default: () => ({ name: "", phone: "" }) },
 		isPhoneVerified: { type: Boolean, default: false },
 		onboardingComplete: { type: Boolean, default: false },
 	},

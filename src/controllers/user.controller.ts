@@ -3,8 +3,8 @@ import logger from "../config/logger.ts";
 import type { RequestWithAuth } from "../middleware/auth.middleware.ts";
 import { User } from "../models/User.ts";
 import type { UpdateUserBody } from "../schemas/auth.schemas.ts";
-import { apiError, apiSuccess } from "../types/types.ts";
 import { toAbsoluteUrl } from "../services/url.service.ts";
+import { apiError, apiSuccess } from "../types/types.ts";
 
 type ReqWithUpdateBody = RequestWithAuth & { validatedBody?: UpdateUserBody };
 

@@ -18,8 +18,8 @@ export const loginSchema = z.object({
 });
 
 export const emergencyContactSchema = z.object({
-	name: z.string().min(1),
-	phone: z.string().min(10).max(15),
+	name: z.string().default(""),
+	phone: z.union([z.literal(""), z.string().min(10).max(15)]).default(""),
 });
 
 const medicalConditionSchema = z.union([

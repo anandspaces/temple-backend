@@ -14,8 +14,8 @@ import {
 	verify,
 } from "../services/otp.service.ts";
 import { signToken } from "../services/token.service.ts";
-import { apiError, apiSuccess } from "../types/types.ts";
 import { toAbsoluteUrl } from "../services/url.service.ts";
+import { apiError, apiSuccess } from "../types/types.ts";
 
 function maskPhone(phone: string): string {
 	if (phone.length <= 4) return "****";
@@ -176,9 +176,7 @@ export async function login(req: ReqWithValidated, res: Response) {
 		);
 		return res.status(401).json(apiError("Invalid or expired OTP"));
 	}
-	const user = await User.findOne()
-		.where("phoneNumber", phoneNumber)
-		.lean();
+	const user = await User.findOne().where("phoneNumber", phoneNumber).lean();
 	if (!user) {
 		logger.warn(
 			{ phone: maskPhone(phoneNumber) },
@@ -357,7 +355,18 @@ export async function completeOnboarding(
 	}
 }
 
-function userResponse(user: InstanceType<typeof User> | { _id: unknown; fullName: string; phoneNumber: string; email?: string; language?: string; profileAvatarUrl?: string }) {
+function userResponse(
+	user:
+		| InstanceType<typeof User>
+		| {
+				_id: unknown;
+				fullName: string;
+				phoneNumber: string;
+				email?: string;
+				language?: string;
+				profileAvatarUrl?: string;
+		  },
+) {
 	return {
 		id: user._id,
 		fullName: user.fullName,
