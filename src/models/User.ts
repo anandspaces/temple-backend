@@ -22,8 +22,10 @@ const userSchema = new Schema(
 		medicalConditions: { type: [String], default: [] },
 		emergencyContact: { type: emergencyContactSchema, required: true },
 		isPhoneVerified: { type: Boolean, default: false },
+		onboardingComplete: { type: Boolean, default: false },
 	},
 	{ timestamps: true },
 );
 
-export const User = mongoose.models.User ?? model("User", userSchema);
+const UserModel = model("User", userSchema);
+export const User = (mongoose.models.User ?? UserModel) as typeof UserModel;
