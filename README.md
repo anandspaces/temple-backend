@@ -29,10 +29,10 @@ Server listens on `http://localhost:${PORT}`.
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Health check |
-| POST | `/auth/send-otp` | Send OTP to phone (body: `{ "phoneNumber": "...", "countryCode"?: "..." }`) |
-| POST | `/auth/verify-otp` | Verify OTP (body: `{ "phoneNumber", "otp", "countryCode"?: "..." }`) |
+| POST | `/auth/send-otp` | Send OTP to phone (body: `{ "phoneNumber": "...", "countryCode": "..." }`) |
+| POST | `/auth/verify-otp` | Verify OTP (body: `{ "phoneNumber", "otp", "countryCode": "..." }`) |
 | POST | `/auth/login` | Deprecated; use send-otp → verify-otp (returns 400) |
-| POST | `/auth/complete-onboarding` | Complete profile after verify-otp (body includes `countryCode`?, `emergencyCountryCode`?) |
+| POST | `/auth/complete-onboarding` | Complete profile after verify-otp (body: `countryCode` required; `emergencyCountryCode` optional) |
 | POST | `/users/register` | Register user (phone must be verified first) |
 
 OTP is logged to the console in development. Phone must be verified via `/auth/verify-otp` before calling `/users/register`.

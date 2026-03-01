@@ -23,7 +23,7 @@ function maskPhone(phone: string): string {
 }
 
 type ReqWithValidated = Request & {
-	validatedBody?: { phoneNumber: string; otp?: string; countryCode?: string };
+	validatedBody?: { phoneNumber: string; otp?: string; countryCode: string };
 };
 
 type ReqWithRegister = Request & {
