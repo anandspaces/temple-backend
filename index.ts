@@ -2,6 +2,7 @@ import fs from "fs";
 import { connectDb } from "./src/config/db.ts";
 import { env } from "./src/config/env.ts";
 import logger from "./src/config/logger.ts";
+import "./src/models/Session.ts";
 import { requestLogger } from "./src/middleware/requestLogger.middleware.ts";
 import { authRoutes } from "./src/routes/auth.routes.ts";
 import { userRoutes } from "./src/routes/user.routes.ts";

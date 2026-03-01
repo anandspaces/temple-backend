@@ -1,8 +1,9 @@
 import type { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
+import logger from "../config/logger.ts";
 import { PendingOnboarding } from "../models/PendingOnboarding.ts";
 import { User } from "../models/User.ts";
-import { verifyToken } from "../services/token.service.ts";
+import { verifyTokenWithSession } from "../services/token.service.ts";
 import { apiError } from "../types/types.ts";
 
 export interface AuthenticatedUser {
@@ -34,7 +35,7 @@ export async function requireAuth(
 		res.status(401).json(apiError("Unauthorized"));
 		return;
 	}
-	const payload = await verifyToken(token);
+	const payload = await verifyTokenWithSession(token);
 	if (!payload) {
 		res.status(401).json(apiError("Unauthorized"));
 		return;
@@ -61,7 +62,8 @@ export async function requireAuth(
 /**
  * For POST /auth/complete-onboarding. Verifies Bearer token and resolves to
  * PendingOnboarding or User (not yet onboarded). Attaches onboardingPending or
- * onboardingUser to req. Responds 401 if token missing/invalid, 403 if pending
+ * onboardingUser to req. Responds 401 if token missing/invalid or if token valid
+ * but no User/PendingOnboarding found (e.g. session expired), 403 if pending
  * expired, 400 if user already onboarded.
  */
 export async function requireAuthForOnboarding(
@@ -72,11 +74,13 @@ export async function requireAuthForOnboarding(
 	const authHeader = req.headers.authorization;
 	const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 	if (!token) {
+		logger.warn({ path: req.path }, "complete-onboarding auth: no token");
 		res.status(401).json(apiError("Unauthorized"));
 		return;
 	}
-	const payload = await verifyToken(token);
+	const payload = await verifyTokenWithSession(token);
 	if (!payload) {
+		logger.warn({ path: req.path }, "complete-onboarding auth: invalid or expired token");
 		res.status(401).json(apiError("Unauthorized"));
 		return;
 	}
@@ -85,6 +89,7 @@ export async function requireAuthForOnboarding(
 	try {
 		objectId = new mongoose.Types.ObjectId(userId);
 	} catch {
+		logger.warn({ path: req.path, userId }, "complete-onboarding auth: invalid userId in token");
 		res.status(401).json(apiError("Unauthorized"));
 		return;
 	}
@@ -92,6 +97,7 @@ export async function requireAuthForOnboarding(
 	const user = await User.findById(objectId);
 	if (user) {
 		if (user.onboardingComplete) {
+			logger.warn({ path: req.path, userId }, "complete-onboarding auth: already onboarded");
 			res.status(400).json(apiError("Already onboarded"));
 			return;
 		}
@@ -104,6 +110,7 @@ export async function requireAuthForOnboarding(
 	if (pending) {
 		if (pending.expiresAt && new Date() > pending.expiresAt) {
 			await PendingOnboarding.findByIdAndDelete(objectId);
+			logger.warn({ path: req.path, userId }, "complete-onboarding auth: pending expired");
 			res.status(403).json(apiError("Verification expired. Please verify OTP again."));
 			return;
 		}
@@ -112,5 +119,9 @@ export async function requireAuthForOnboarding(
 		return;
 	}
 
-	res.status(401).json(apiError("Unauthorized"));
+	// Valid token but no User or PendingOnboarding (e.g. expired pending deleted, or stale token)
+	logger.warn({ path: req.path, userId }, "complete-onboarding auth: no user or pending for token");
+	res
+		.status(401)
+		.json(apiError("Session invalid or expired. Please verify OTP again."));
 }

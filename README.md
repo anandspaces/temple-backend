@@ -37,4 +37,24 @@ Server listens on `http://localhost:${PORT}`.
 
 OTP is logged to the console in development. Phone must be verified via `/auth/verify-otp` before calling `/users/register`.
 
+### Auth flow and complete-onboarding
+
+1. **POST /auth/send-otp** → 2. **POST /auth/verify-otp** → 3. **POST /auth/complete-onboarding** with `Authorization: Bearer <accessToken>` from step 2. Use the token from the **same** verify-otp response.
+
+**Important for curl:** Do **not** use `-L` (follow redirects) when calling complete-onboarding. Curl does not re-send the `Authorization` header on redirected requests, so you will get 401. Either omit `-L` for that request, or use `--location-trusted` so the header is sent after redirect. Example:
+
+```bash
+# Correct: no -L for complete-onboarding
+curl 'http://localhost:3005/auth/complete-onboarding' \
+  -H 'Authorization: Bearer YOUR_TOKEN_HERE' \
+  -F 'language="english"' \
+  ...
+```
+
+Server logs for `complete-onboarding auth:` indicate why auth failed (no token, invalid token, session not found, etc.).
+
+### API test script
+
+Run all API tests (server and MongoDB must be up): `bun run scripts/test-api.ts` or `bun run test:api`. Set `TEST_OTP` in env if not using the default `123456`; set `BASE_URL` if the server is not at `http://localhost:3005`.
+
 This project was created using `bun init`. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.

@@ -13,7 +13,10 @@ import {
 	markPhoneVerifiedForRegistration,
 	verify,
 } from "../services/otp.service.ts";
-import { signToken } from "../services/token.service.ts";
+import {
+	createSession,
+	signToken,
+} from "../services/token.service.ts";
 import { toAbsoluteUrl } from "../services/url.service.ts";
 import { apiError, apiSuccess } from "../types/types.ts";
 
@@ -113,15 +116,17 @@ export async function verifyOtp(req: ReqWithValidated, res: Response) {
 			"Verify OTP: pending onboarding created/updated",
 		);
 		try {
-			const { accessToken, expiresIn } = await signToken({
-				userId: String(pending._id),
+			const userId = String(pending._id);
+			const { accessToken, expiresIn, jti } = await signToken({
+				userId,
 				phoneNumber,
 			});
+			await createSession(userId, jti, expiresIn);
 			return res.status(200).json(
 				apiSuccess({
 					accessToken,
 					expiresIn,
-					userId: String(pending._id),
+					userId,
 					onboarding: false
 				}),
 			);
@@ -138,10 +143,12 @@ export async function verifyOtp(req: ReqWithValidated, res: Response) {
 
 	if (userDoc.onboardingComplete) {
 		try {
-			const { accessToken, expiresIn } = await signToken({
-				userId: String(userDoc._id),
+			const userId = String(userDoc._id);
+			const { accessToken, expiresIn, jti } = await signToken({
+				userId,
 				phoneNumber: userDoc.phoneNumber,
 			});
+			await createSession(userId, jti, expiresIn);
 			logger.info(
 				{ userId: userDoc._id, phone: maskPhone(phoneNumber) },
 				"Verify OTP: login success",
@@ -150,7 +157,7 @@ export async function verifyOtp(req: ReqWithValidated, res: Response) {
 				apiSuccess({
 					accessToken,
 					expiresIn,
-					userId: String(userDoc._id),
+					userId,
 					onboarding: true
 				}),
 			);
@@ -167,15 +174,17 @@ export async function verifyOtp(req: ReqWithValidated, res: Response) {
 		"Verify OTP: existing user, onboarding required",
 	);
 	try {
-		const { accessToken, expiresIn } = await signToken({
-			userId: String(userDoc._id),
+		const userId = String(userDoc._id);
+		const { accessToken, expiresIn, jti } = await signToken({
+			userId,
 			phoneNumber: userDoc.phoneNumber,
 		});
+		await createSession(userId, jti, expiresIn);
 		return res.status(200).json(
 			apiSuccess({
 				accessToken,
 				expiresIn,
-				userId: String(userDoc._id),
+				userId,
 				onboarding: false
 			}),
 		);
@@ -239,10 +248,12 @@ export async function completeOnboarding(
 			"Complete onboarding success (new user)",
 		);
 		try {
-			const { accessToken, expiresIn } = await signToken({
-				userId: String(user._id),
+			const userId = String(user._id);
+			const { accessToken, expiresIn, jti } = await signToken({
+				userId,
 				phoneNumber: user.phoneNumber,
 			});
+			await createSession(userId, jti, expiresIn);
 			return res.status(200).json(
 				apiSuccess({
 					accessToken,
@@ -282,10 +293,12 @@ export async function completeOnboarding(
 			"Complete onboarding success (resume)",
 		);
 		try {
-			const { accessToken, expiresIn } = await signToken({
-				userId: String(existingUser._id),
+			const userId = String(existingUser._id);
+			const { accessToken, expiresIn, jti } = await signToken({
+				userId,
 				phoneNumber: existingUser.phoneNumber,
 			});
+			await createSession(userId, jti, expiresIn);
 			return res.status(200).json(
 				apiSuccess({
 					accessToken,
