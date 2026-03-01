@@ -23,7 +23,7 @@ function maskPhone(phone: string): string {
 }
 
 type ReqWithValidated = Request & {
-	validatedBody?: { phoneNumber: string; otp?: string };
+	validatedBody?: { phoneNumber: string; otp?: string; countryCode?: string };
 };
 
 type ReqWithRegister = Request & {
@@ -163,63 +163,18 @@ export async function verifyOtp(req: ReqWithValidated, res: Response) {
 	);
 }
 
-export async function login(req: ReqWithValidated, res: Response) {
-	const body = req.validatedBody;
-	if (!body?.phoneNumber || !body?.otp)
-		return res.status(400).json(apiError("Missing phoneNumber or otp"));
-	const { phoneNumber, otp } = body;
-	const valid = verify(phoneNumber, otp);
-	if (!valid) {
-		logger.warn(
-			{ phone: maskPhone(phoneNumber) },
-			"Login failed: invalid or expired OTP",
+/**
+ * Deprecated: use send-otp → verify-otp instead (verify-otp returns accessToken for onboarded users).
+ * Returns 400 directing client to the new flow.
+ */
+export async function login(_req: ReqWithValidated, res: Response) {
+	return res
+		.status(400)
+		.json(
+			apiError(
+				"Use send-otp, then verify-otp. For onboarded users, verify-otp returns accessToken and user.",
+			),
 		);
-		return res.status(401).json(apiError("Invalid or expired OTP"));
-	}
-	const user = await User.findOne().where("phoneNumber", phoneNumber).lean();
-	if (!user) {
-		logger.warn(
-			{ phone: maskPhone(phoneNumber) },
-			"Login failed: user not found",
-		);
-		return res
-			.status(404)
-			.json(apiError("User not found. Please register first."));
-	}
-	if (!user.onboardingComplete) {
-		logger.warn(
-			{ userId: user._id, phone: maskPhone(phoneNumber) },
-			"Login failed: onboarding not complete",
-		);
-		return res
-			.status(403)
-			.json(
-				apiError(
-					"Complete onboarding first. Use send-otp then verify-otp, then complete-onboarding.",
-				),
-			);
-	}
-	try {
-		const { accessToken, expiresIn } = await signToken({
-			userId: String(user._id),
-			phoneNumber: user.phoneNumber,
-		});
-		logger.info(
-			{ userId: user._id, phone: maskPhone(phoneNumber) },
-			"Login success",
-		);
-		return res.status(200).json(
-			apiSuccess({
-				accessToken,
-				expiresIn,
-				user: userResponse(user),
-				onboarding: true,
-			}),
-		);
-	} catch (err) {
-		logger.error({ err }, "Login: token signing failed");
-		return res.status(500).json(apiError("Authentication configuration error"));
-	}
 }
 
 /**

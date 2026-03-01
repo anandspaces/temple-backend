@@ -5,7 +5,7 @@
  * - POST /register/verify-otp – alias for verify-otp.
  * - POST /complete-onboarding  – complete profile for userId from verify-otp; returns accessToken, user.
  * - POST /register            – deprecated; returns 400 (use send-otp → verify-otp → complete-onboarding).
- * - POST /login               – sign-in with phone + OTP (onboarded users only); returns accessToken, user.
+ * - POST /login               – deprecated; returns 400 (use send-otp → verify-otp).
  */
 import express = require("express");
 

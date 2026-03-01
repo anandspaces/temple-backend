@@ -23,6 +23,7 @@ export function validateRegisterForm(
 	const emergencyContact = {
 		name: stringOrEmpty(body.emergencyContactName),
 		phone: stringOrEmpty(body.emergencyContactPhone),
+		countryCode: stringOrEmpty(body.emergencyCountryCode),
 	};
 	const medicalConditionsRaw = stringOrEmpty(body.medicalConditions);
 	const medicalConditions = medicalConditionsRaw
@@ -62,6 +63,7 @@ export function validateCompleteOnboardingForm(
 	const emergencyContact = {
 		name: stringOrEmpty(body.emergencyContactName),
 		phone: stringOrEmpty(body.emergencyContactPhone),
+		countryCode: stringOrEmpty(body.emergencyCountryCode),
 	};
 	const medicalConditionsRaw = stringOrEmpty(body.medicalConditions);
 	const medicalConditions = medicalConditionsRaw

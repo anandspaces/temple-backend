@@ -3,13 +3,17 @@ import { MEDICAL_CONDITIONS } from "../types/types.ts";
 
 const phoneSchema = z.string().min(10).max(15);
 
+const countryCodeSchema = z.string().max(5).optional();
+
 export const sendOtpSchema = z.object({
 	phoneNumber: phoneSchema,
+	countryCode: countryCodeSchema,
 });
 
 export const verifyOtpSchema = z.object({
 	phoneNumber: phoneSchema,
 	otp: z.string().length(6),
+	countryCode: countryCodeSchema,
 });
 
 export const loginSchema = z.object({
@@ -20,6 +24,7 @@ export const loginSchema = z.object({
 export const emergencyContactSchema = z.object({
 	name: z.string().default(""),
 	phone: z.union([z.literal(""), z.string().min(10).max(15)]).default(""),
+	countryCode: z.string().max(5).optional().default(""),
 });
 
 const medicalConditionSchema = z.union([
@@ -33,6 +38,8 @@ export const registerSchema = z.object({
 	age: z.coerce.number().int().min(1).max(150),
 	gender: z.string().min(1),
 	phoneNumber: phoneSchema,
+	countryCode: countryCodeSchema,
+	emergencyCountryCode: countryCodeSchema,
 	residentialAddress: z.string().min(1),
 	medicalConditions: z.array(medicalConditionSchema),
 	emergencyContact: emergencyContactSchema,
