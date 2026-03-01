@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
-import mongoose from "mongoose";
 import logger from "../config/logger.ts";
+import type { RequestWithOnboarding } from "../middleware/auth.middleware.ts";
 import { PendingOnboarding } from "../models/PendingOnboarding.ts";
 import { User } from "../models/User.ts";
 import type {
@@ -34,7 +34,7 @@ type ReqWithRegister = Request & {
 	};
 };
 
-type ReqWithCompleteOnboarding = Request & {
+type ReqWithCompleteOnboarding = RequestWithOnboarding & {
 	validatedBody?: CompleteOnboardingBody;
 	files?: {
 		aadhaarFile?: Express.Multer.File[];
@@ -72,10 +72,8 @@ export async function sendOtp(req: ReqWithValidated, res: Response) {
 }
 
 /**
- * Verify OTP: decides register vs login.
- * - New phone: create/update PendingOnboarding, return userId (pending id), onboarding: false.
- * - Existing user not onboarded: return userId, onboarding: false (resume).
- * - User onboarded: login and return accessToken, user, onboarding: true.
+ * Verify OTP: login on verification. Response format is fixed (same as onboarding: false) for consistency:
+ * { accessToken, expiresIn, userId, onboarding, user } — user is null when onboarding false, profile object when true.
  */
 export async function verifyOtp(req: ReqWithValidated, res: Response) {
 	const body = req.validatedBody;
@@ -114,12 +112,25 @@ export async function verifyOtp(req: ReqWithValidated, res: Response) {
 			{ userId: pending._id, phone: maskPhone(phoneNumber) },
 			"Verify OTP: pending onboarding created/updated",
 		);
-		return res.status(200).json(
-			apiSuccess({
+		try {
+			const { accessToken, expiresIn } = await signToken({
 				userId: String(pending._id),
-				onboarding: false,
-			}),
-		);
+				phoneNumber,
+			});
+			return res.status(200).json(
+				apiSuccess({
+					accessToken,
+					expiresIn,
+					userId: String(pending._id),
+					onboarding: false
+				}),
+			);
+		} catch (err) {
+			logger.error({ err }, "Verify OTP: token signing failed");
+			return res
+				.status(500)
+				.json(apiError("Authentication configuration error"));
+		}
 	}
 
 	userDoc.isPhoneVerified = true;
@@ -139,8 +150,8 @@ export async function verifyOtp(req: ReqWithValidated, res: Response) {
 				apiSuccess({
 					accessToken,
 					expiresIn,
-					user: userResponse(userDoc),
-					onboarding: true,
+					userId: String(userDoc._id),
+					onboarding: true
 				}),
 			);
 		} catch (err) {
@@ -155,12 +166,25 @@ export async function verifyOtp(req: ReqWithValidated, res: Response) {
 		{ userId: userDoc._id, phone: maskPhone(phoneNumber) },
 		"Verify OTP: existing user, onboarding required",
 	);
-	return res.status(200).json(
-		apiSuccess({
+	try {
+		const { accessToken, expiresIn } = await signToken({
 			userId: String(userDoc._id),
-			onboarding: false,
-		}),
-	);
+			phoneNumber: userDoc.phoneNumber,
+		});
+		return res.status(200).json(
+			apiSuccess({
+				accessToken,
+				expiresIn,
+				userId: String(userDoc._id),
+				onboarding: false
+			}),
+		);
+	} catch (err) {
+		logger.error({ err }, "Verify OTP: token signing failed");
+		return res
+			.status(500)
+			.json(apiError("Authentication configuration error"));
+	}
 }
 
 /**
@@ -178,8 +202,8 @@ export async function login(_req: ReqWithValidated, res: Response) {
 }
 
 /**
- * Complete onboarding: for users who got onboarding: false from verify-otp.
- * Accepts userId (same field for new = PendingOnboarding id, or resume = User id) + full profile. Returns access token on success.
+ * Complete onboarding: identity from Bearer token (set by requireAuthForOnboarding).
+ * Body is profile only (no userId). Returns accessToken and user on success.
  */
 export async function completeOnboarding(
 	req: ReqWithCompleteOnboarding,
@@ -187,20 +211,11 @@ export async function completeOnboarding(
 ) {
 	const body = req.validatedBody;
 	if (!body) return res.status(400).json(apiError("Missing request body"));
-	if (!body.userId) {
-		return res.status(400).json(apiError("userId required"));
-	}
 	const files = req.files ?? {};
-	const userIdParam = new mongoose.Types.ObjectId(body.userId);
+	const pending = req.onboardingPending;
+	const existingUser = req.onboardingUser;
 
-	const pending = await PendingOnboarding.findById(userIdParam);
 	if (pending) {
-		if (pending.expiresAt && new Date() > pending.expiresAt) {
-			await PendingOnboarding.findByIdAndDelete(userIdParam);
-			return res
-				.status(403)
-				.json(apiError("Verification expired. Please verify OTP again."));
-		}
 		if (pending.phoneNumber !== body.phoneNumber) {
 			return res
 				.status(403)
@@ -217,7 +232,7 @@ export async function completeOnboarding(
 			isPhoneVerified: true,
 			onboardingComplete: true,
 		});
-		await PendingOnboarding.findByIdAndDelete(userIdParam);
+		await PendingOnboarding.findByIdAndDelete(pending._id);
 
 		logger.info(
 			{ userId: user._id, phone: maskPhone(body.phoneNumber) },
@@ -244,70 +259,50 @@ export async function completeOnboarding(
 		}
 	}
 
-	const user = await User.findById(userIdParam);
-	if (!user) {
-		return res.status(404).json(apiError("User not found"));
-	}
-	if (!user.isPhoneVerified) {
-		return res
-			.status(403)
-			.json(
-				apiError("Phone not verified. Use send-otp then verify-otp first."),
-			);
-	}
-	if (user.onboardingComplete) {
+	if (existingUser) {
+		if (existingUser.phoneNumber !== body.phoneNumber) {
+			return res
+				.status(403)
+				.json(apiError("Phone number does not match the verified user"));
+		}
+
+		const { aadhaarIdFileUrl, profileAvatarUrl } = await getFileUrls(files);
+		const email = (body.email ?? "").trim() || "";
+		existingUser.set({
+			...body,
+			email: email || existingUser.email,
+			aadhaarIdFileUrl: aadhaarIdFileUrl || existingUser.aadhaarIdFileUrl,
+			profileAvatarUrl: profileAvatarUrl || existingUser.profileAvatarUrl,
+			onboardingComplete: true,
+		});
+		await existingUser.save();
+
+		logger.info(
+			{ userId: existingUser._id, phone: maskPhone(body.phoneNumber) },
+			"Complete onboarding success (resume)",
+		);
 		try {
 			const { accessToken, expiresIn } = await signToken({
-				userId: String(user._id),
-				phoneNumber: user.phoneNumber,
+				userId: String(existingUser._id),
+				phoneNumber: existingUser.phoneNumber,
 			});
-			return res
-				.status(200)
-				.json(apiSuccess({ accessToken, expiresIn, user: userResponse(user) }));
-		} catch {
+			return res.status(200).json(
+				apiSuccess({
+					accessToken,
+					expiresIn,
+					user: userResponse(existingUser),
+					onboarding: true,
+				}),
+			);
+		} catch (err) {
+			logger.error({ err }, "Complete onboarding: token signing failed");
 			return res
 				.status(500)
 				.json(apiError("Authentication configuration error"));
 		}
 	}
-	if (user.phoneNumber !== body.phoneNumber) {
-		return res
-			.status(403)
-			.json(apiError("Phone number does not match the verified user"));
-	}
 
-	const { aadhaarIdFileUrl, profileAvatarUrl } = await getFileUrls(files);
-	const email = (body.email ?? "").trim() || "";
-	user.set({
-		...body,
-		email: email || user.email,
-		aadhaarIdFileUrl: aadhaarIdFileUrl || user.aadhaarIdFileUrl,
-		profileAvatarUrl: profileAvatarUrl || user.profileAvatarUrl,
-		onboardingComplete: true,
-	});
-	await user.save();
-
-	logger.info(
-		{ userId: user._id, phone: maskPhone(body.phoneNumber) },
-		"Complete onboarding success (resume)",
-	);
-	try {
-		const { accessToken, expiresIn } = await signToken({
-			userId: String(user._id),
-			phoneNumber: user.phoneNumber,
-		});
-		return res.status(200).json(
-			apiSuccess({
-				accessToken,
-				expiresIn,
-				user: userResponse(user),
-				onboarding: true,
-			}),
-		);
-	} catch (err) {
-		logger.error({ err }, "Complete onboarding: token signing failed");
-		return res.status(500).json(apiError("Authentication configuration error"));
-	}
+	return res.status(401).json(apiError("Unauthorized"));
 }
 
 function userResponse(
@@ -341,7 +336,7 @@ export async function register(_req: ReqWithRegister, res: Response) {
 		.status(400)
 		.json(
 			apiError(
-				"Use send-otp, then verify-otp. If onboarding is required, call complete-onboarding with the returned userId and your profile.",
+				"Use send-otp, then verify-otp. If onboarding is required, call complete-onboarding with the returned token and your profile.",
 			),
 		);
 }

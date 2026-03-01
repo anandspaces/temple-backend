@@ -1,9 +1,9 @@
 /**
  * Auth routes (mount at /auth).
  * - POST /send-otp            – send OTP to phone (no token).
- * - POST /verify-otp          – verify OTP; returns userId + onboarding: false or accessToken + user (if onboarded).
+ * - POST /verify-otp          – verify OTP; always returns accessToken, expiresIn, userId, onboarding; user when onboarded.
  * - POST /register/verify-otp – alias for verify-otp.
- * - POST /complete-onboarding  – complete profile for userId from verify-otp; returns accessToken, user.
+ * - POST /complete-onboarding  – Bearer token required; profile body only; returns accessToken, user.
  * - POST /register            – deprecated; returns 400 (use send-otp → verify-otp → complete-onboarding).
  * - POST /login               – deprecated; returns 400 (use send-otp → verify-otp).
  */
@@ -16,6 +16,7 @@ import {
 	sendOtp,
 	verifyOtp,
 } from "../controllers/auth.controller.ts";
+import { requireAuthForOnboarding } from "../middleware/auth.middleware.ts";
 import { registerUpload } from "../middleware/upload.middleware.ts";
 import {
 	validateCompleteOnboardingForm,
@@ -39,6 +40,7 @@ authRoutes.post(
 );
 authRoutes.post(
 	"/complete-onboarding",
+	requireAuthForOnboarding,
 	registerUpload,
 	validateCompleteOnboardingForm,
 	completeOnboarding,

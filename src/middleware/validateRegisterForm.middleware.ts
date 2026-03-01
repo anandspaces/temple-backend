@@ -53,7 +53,7 @@ export function validateRegisterForm(
 	next();
 }
 
-/** Same as register form but requires userId (from verify-otp). Use for POST /auth/complete-onboarding. */
+/** Profile-only form for POST /auth/complete-onboarding. Identity comes from Bearer token. */
 export function validateCompleteOnboardingForm(
 	req: Request,
 	res: Response,
@@ -76,7 +76,6 @@ export function validateCompleteOnboardingForm(
 		...body,
 		emergencyContact,
 		medicalConditions,
-		userId: stringOrEmpty(body.userId),
 	};
 
 	const result = completeOnboardingSchema.safeParse(formData);
