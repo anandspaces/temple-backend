@@ -3,10 +3,7 @@ import logger from "../config/logger.ts";
 import type { RequestWithOnboarding } from "../middleware/auth.middleware.ts";
 import { PendingOnboarding } from "../models/PendingOnboarding.ts";
 import { User } from "../models/User.ts";
-import type {
-	CompleteOnboardingBody,
-	RegisterBody,
-} from "../schemas/auth.schemas.ts";
+import type { CompleteOnboardingBody } from "../schemas/auth.schemas.ts";
 import { storeFile } from "../services/fileUpload.service.ts";
 import {
 	generateAndStore,
@@ -26,14 +23,6 @@ type ReqWithValidated = Request & {
 	validatedBody?: { phoneNumber: string; otp?: string; countryCode: string };
 };
 
-type ReqWithRegister = Request & {
-	validatedBody?: RegisterBody;
-	files?: {
-		aadhaarFile?: Express.Multer.File[];
-		profileAvatar?: Express.Multer.File[];
-	};
-};
-
 type ReqWithCompleteOnboarding = RequestWithOnboarding & {
 	validatedBody?: CompleteOnboardingBody;
 	files?: {
@@ -45,7 +34,7 @@ type ReqWithCompleteOnboarding = RequestWithOnboarding & {
 const PENDING_TTL_MS = 15 * 60 * 1000;
 
 async function getFileUrls(
-	files: ReqWithRegister["files"],
+	files: ReqWithCompleteOnboarding["files"],
 ): Promise<{ aadhaarIdFileUrl: string; profileAvatarUrl: string }> {
 	let aadhaarIdFileUrl = "";
 	let profileAvatarUrl = "";
@@ -195,20 +184,6 @@ export async function verifyOtp(req: ReqWithValidated, res: Response) {
 }
 
 /**
- * Deprecated: use send-otp → verify-otp instead (verify-otp returns accessToken for onboarded users).
- * Returns 400 directing client to the new flow.
- */
-export async function login(_req: ReqWithValidated, res: Response) {
-	return res
-		.status(400)
-		.json(
-			apiError(
-				"Use send-otp, then verify-otp. For onboarded users, verify-otp returns accessToken and user.",
-			),
-		);
-}
-
-/**
  * Complete onboarding: identity from Bearer token (set by requireAuthForOnboarding).
  * Body is profile only (no userId). Returns accessToken and user on success.
  */
@@ -346,18 +321,4 @@ function userResponse(
 		language: user.language ?? "",
 		profileAvatarUrl: toAbsoluteUrl(user.profileAvatarUrl ?? ""),
 	};
-}
-
-/**
- * Deprecated: use send-otp → verify-otp → complete-onboarding instead.
- * Returns 400 directing client to the new flow.
- */
-export async function register(_req: ReqWithRegister, res: Response) {
-	return res
-		.status(400)
-		.json(
-			apiError(
-				"Use send-otp, then verify-otp. If onboarding is required, call complete-onboarding with the returned token and your profile.",
-			),
-		);
 }

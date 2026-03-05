@@ -17,11 +17,6 @@ export const verifyOtpSchema = z.object({
 	countryCode: countryCodeSchema,
 });
 
-export const loginSchema = z.object({
-	phoneNumber: phoneSchema,
-	otp: z.string().length(6),
-});
-
 export const emergencyContactSchema = z.object({
 	name: z.string().default(""),
 	phone: z.union([z.literal(""), z.string().min(10).max(15)]).default(""),
@@ -64,7 +59,6 @@ export const completeOnboardingSchema = registerSchema.omit({
 
 export type SendOtpBody = z.output<typeof sendOtpSchema>;
 export type VerifyOtpBody = z.output<typeof verifyOtpSchema>;
-export type LoginBody = z.output<typeof loginSchema>;
 export type RegisterBody = z.output<typeof registerSchema>;
 export type CompleteOnboardingBody = z.output<typeof completeOnboardingSchema>;
 export type UpdateUserBody = z.output<typeof updateUserSchema>;

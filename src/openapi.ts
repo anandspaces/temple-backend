@@ -5,7 +5,6 @@
 import { createDocument } from "zod-openapi";
 import {
 	completeOnboardingSchema,
-	loginSchema,
 	sendOtpSchema,
 	updateUserSchema,
 	verifyOtpSchema,
@@ -114,20 +113,6 @@ export const openApiDocument = createDocument({
 				},
 			},
 		},
-		"/auth/register/verify-otp": {
-			post: {
-				summary: "Alias for verify-otp",
-				requestBody: {
-					content: {
-						"application/json": { schema: verifyOtpSchema },
-					},
-				},
-				responses: {
-					"200": { description: "Same as POST /auth/verify-otp" },
-					"400": { description: "Invalid or expired OTP" },
-				},
-			},
-		},
 		"/auth/complete-onboarding": {
 			post: {
 				summary: "Complete profile (Bearer required)",
@@ -165,37 +150,6 @@ export const openApiDocument = createDocument({
 					"400": { description: "Validation error" },
 					"401": { description: "Unauthorized" },
 					"403": { description: "Verification expired" },
-				},
-			},
-		},
-		"/auth/login": {
-			post: {
-				summary: "Deprecated; use send-otp then verify-otp",
-				deprecated: true,
-				requestBody: {
-					content: {
-						"application/json": { schema: loginSchema },
-					},
-				},
-				responses: {
-					"400": { description: "Deprecated; use verify-otp" },
-				},
-			},
-		},
-		"/auth/register": {
-			post: {
-				summary: "Deprecated; use send-otp, verify-otp, complete-onboarding",
-				deprecated: true,
-				requestBody: {
-					content: {
-						"multipart/form-data": {
-							schema: completeOnboardingSchema,
-							example: "Full registration form",
-						},
-					},
-				},
-				responses: {
-					"400": { description: "Deprecated or validation error" },
 				},
 			},
 		},

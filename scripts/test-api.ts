@@ -143,48 +143,7 @@ async function run(): Promise<void> {
 		process.exit(1);
 	}
 
-	// 5. POST /auth/login (expect 400)
-	{
-		const label = "POST /auth/login (expect 400)";
-		try {
-			const res = await fetch(`${BASE_URL}/auth/login`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ phoneNumber: PHONE, otp: TEST_OTP }),
-			});
-			const data = (await res.json()) as { error?: string };
-			if (res.status !== 400) {
-				fail(label, `expected 400 got ${res.status}`);
-			} else if (!data.error?.includes("verify-otp")) {
-				fail(label, "expected error message about verify-otp");
-			} else {
-				pass(label);
-			}
-		} catch (e) {
-			fail(label, String(e));
-		}
-	}
-
-	// 6. POST /auth/register (expect 400)
-	{
-		const label = "POST /auth/register (expect 400)";
-		try {
-			const res = await fetch(`${BASE_URL}/auth/register`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({}),
-			});
-			if (res.status !== 400) {
-				fail(label, `expected 400 got ${res.status}`);
-			} else {
-				pass(label);
-			}
-		} catch (e) {
-			fail(label, String(e));
-		}
-	}
-
-	// 7. GET /users/me
+	// 5. GET /users/me
 	{
 		const label = "GET /users/me";
 		try {
@@ -202,7 +161,7 @@ async function run(): Promise<void> {
 		}
 	}
 
-	// 8. PATCH /users/me
+	// 6. PATCH /users/me
 	{
 		const label = "PATCH /users/me";
 		try {
@@ -225,7 +184,7 @@ async function run(): Promise<void> {
 		}
 	}
 
-	// 9. DELETE /users/me
+	// 7. DELETE /users/me
 	{
 		const label = "DELETE /users/me";
 		try {
