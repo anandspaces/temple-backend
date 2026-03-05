@@ -18,7 +18,10 @@ const logLevel = (env.LOG_LEVEL ??
 	(isProduction ? "info" : "debug")) as pino.Level;
 
 const logger = pino(
-	{ level: logLevel },
+	{
+		level: logLevel,
+		timestamp: pino.stdTimeFunctions.isoTime,
+	},
 	pino.multistream([{ stream: process.stdout }, { stream: fileStream }]),
 );
 
