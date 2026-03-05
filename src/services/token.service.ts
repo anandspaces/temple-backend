@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import * as jose from "jose";
-import logger from "../config/logger.ts";
 import { env } from "../config/env.ts";
+import logger from "../config/logger.ts";
 import { Session } from "../models/Session.ts";
 
 /** Parse expiry string (e.g. "7d", "24h") to seconds. */

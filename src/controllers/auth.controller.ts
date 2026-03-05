@@ -13,10 +13,7 @@ import {
 	markPhoneVerifiedForRegistration,
 	verify,
 } from "../services/otp.service.ts";
-import {
-	createSession,
-	signToken,
-} from "../services/token.service.ts";
+import { createSession, signToken } from "../services/token.service.ts";
 import { toAbsoluteUrl } from "../services/url.service.ts";
 import { apiError, apiSuccess } from "../types/types.ts";
 
@@ -127,7 +124,7 @@ export async function verifyOtp(req: ReqWithValidated, res: Response) {
 					accessToken,
 					expiresIn,
 					userId,
-					onboarding: false
+					onboarding: false,
 				}),
 			);
 		} catch (err) {
@@ -158,7 +155,7 @@ export async function verifyOtp(req: ReqWithValidated, res: Response) {
 					accessToken,
 					expiresIn,
 					userId,
-					onboarding: true
+					onboarding: true,
 				}),
 			);
 		} catch (err) {
@@ -185,14 +182,12 @@ export async function verifyOtp(req: ReqWithValidated, res: Response) {
 				accessToken,
 				expiresIn,
 				userId,
-				onboarding: false
+				onboarding: false,
 			}),
 		);
 	} catch (err) {
 		logger.error({ err }, "Verify OTP: token signing failed");
-		return res
-			.status(500)
-			.json(apiError("Authentication configuration error"));
+		return res.status(500).json(apiError("Authentication configuration error"));
 	}
 }
 

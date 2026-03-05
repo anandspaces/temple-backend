@@ -8,7 +8,7 @@ import type { OtpProvider } from "./otp.service.ts";
  */
 export function getMsg91Provider(): OtpProvider {
 	return {
-		async send(phoneNumber: string, otp: string) {
+		async send(phoneNumber: string, _otp: string) {
 			logger.info(
 				{ phone: phoneNumber.slice(-4), otp: "***" },
 				"MSG91 placeholder: OTP not sent (replace with real API)",

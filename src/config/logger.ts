@@ -19,10 +19,7 @@ const logLevel = (env.LOG_LEVEL ??
 
 const logger = pino(
 	{ level: logLevel },
-	pino.multistream([
-		{ stream: process.stdout },
-		{ stream: fileStream },
-	]),
+	pino.multistream([{ stream: process.stdout }, { stream: fileStream }]),
 );
 
 export function child(bindings: pino.Bindings): pino.Logger {

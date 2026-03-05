@@ -80,7 +80,10 @@ export async function requireAuthForOnboarding(
 	}
 	const payload = await verifyTokenWithSession(token);
 	if (!payload) {
-		logger.warn({ path: req.path }, "complete-onboarding auth: invalid or expired token");
+		logger.warn(
+			{ path: req.path },
+			"complete-onboarding auth: invalid or expired token",
+		);
 		res.status(401).json(apiError("Unauthorized"));
 		return;
 	}
@@ -89,7 +92,10 @@ export async function requireAuthForOnboarding(
 	try {
 		objectId = new mongoose.Types.ObjectId(userId);
 	} catch {
-		logger.warn({ path: req.path, userId }, "complete-onboarding auth: invalid userId in token");
+		logger.warn(
+			{ path: req.path, userId },
+			"complete-onboarding auth: invalid userId in token",
+		);
 		res.status(401).json(apiError("Unauthorized"));
 		return;
 	}
@@ -97,7 +103,10 @@ export async function requireAuthForOnboarding(
 	const user = await User.findById(objectId);
 	if (user) {
 		if (user.onboardingComplete) {
-			logger.warn({ path: req.path, userId }, "complete-onboarding auth: already onboarded");
+			logger.warn(
+				{ path: req.path, userId },
+				"complete-onboarding auth: already onboarded",
+			);
 			res.status(400).json(apiError("Already onboarded"));
 			return;
 		}
@@ -110,8 +119,13 @@ export async function requireAuthForOnboarding(
 	if (pending) {
 		if (pending.expiresAt && new Date() > pending.expiresAt) {
 			await PendingOnboarding.findByIdAndDelete(objectId);
-			logger.warn({ path: req.path, userId }, "complete-onboarding auth: pending expired");
-			res.status(403).json(apiError("Verification expired. Please verify OTP again."));
+			logger.warn(
+				{ path: req.path, userId },
+				"complete-onboarding auth: pending expired",
+			);
+			res
+				.status(403)
+				.json(apiError("Verification expired. Please verify OTP again."));
 			return;
 		}
 		(req as RequestWithOnboarding).onboardingPending = pending;
@@ -120,7 +134,10 @@ export async function requireAuthForOnboarding(
 	}
 
 	// Valid token but no User or PendingOnboarding (e.g. expired pending deleted, or stale token)
-	logger.warn({ path: req.path, userId }, "complete-onboarding auth: no user or pending for token");
+	logger.warn(
+		{ path: req.path, userId },
+		"complete-onboarding auth: no user or pending for token",
+	);
 	res
 		.status(401)
 		.json(apiError("Session invalid or expired. Please verify OTP again."));

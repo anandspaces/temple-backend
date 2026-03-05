@@ -22,7 +22,10 @@ const UserModel = User as {
 };
 
 export async function getMe(req: RequestWithAuth, res: Response) {
-	const userId = req.user!._id;
+	const userId = req.user?._id;
+	if (!userId) {
+		return res.status(401).json(apiError("Unauthorized"));
+	}
 	const user = await UserModel.findOne({ _id: userId }).lean();
 	if (!user) {
 		logger.warn({ userId }, "getMe: user not found");
@@ -38,8 +41,11 @@ export async function getMe(req: RequestWithAuth, res: Response) {
 }
 
 export async function updateMe(req: ReqWithUpdateBody, res: Response) {
-	const userId = req.user!._id;
-	const updates = req.validatedBody!;
+	const userId = req.user?._id;
+	const updates = req.validatedBody;
+	if (!userId || !updates) {
+		return res.status(401).json(apiError("Unauthorized"));
+	}
 	const updated = await UserModel.findOneAndUpdate({ _id: userId }, updates, {
 		new: true,
 	}).lean();
@@ -57,7 +63,10 @@ export async function updateMe(req: ReqWithUpdateBody, res: Response) {
 }
 
 export async function deleteMe(req: RequestWithAuth, res: Response) {
-	const userId = req.user!._id;
+	const userId = req.user?._id;
+	if (!userId) {
+		return res.status(401).json(apiError("Unauthorized"));
+	}
 	const deleted = await UserModel.findOneAndDelete({ _id: userId });
 	if (!deleted) {
 		logger.warn({ userId }, "deleteMe: user not found");
