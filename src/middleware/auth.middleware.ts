@@ -18,6 +18,9 @@ export type RequestWithAuth = Request & { user?: AuthenticatedUser };
 export type RequestWithOnboarding = Request & {
 	onboardingPending?: InstanceType<typeof PendingOnboarding>;
 	onboardingUser?: InstanceType<typeof User>;
+	/** From JWT payload; set by requireAuthForOnboarding */
+	phoneNumber?: string;
+	countryCode?: string;
 };
 
 /**
@@ -87,6 +90,9 @@ export async function requireAuthForOnboarding(
 		res.status(401).json(apiError("Unauthorized"));
 		return;
 	}
+	const reqOnboarding = req as RequestWithOnboarding;
+	reqOnboarding.phoneNumber = payload.phoneNumber;
+	reqOnboarding.countryCode = payload.countryCode ?? "";
 	const userId = payload.userId;
 	let objectId: mongoose.Types.ObjectId;
 	try {
@@ -110,7 +116,7 @@ export async function requireAuthForOnboarding(
 			res.status(400).json(apiError("Already onboarded"));
 			return;
 		}
-		(req as RequestWithOnboarding).onboardingUser = user;
+		reqOnboarding.onboardingUser = user;
 		next();
 		return;
 	}
@@ -128,7 +134,7 @@ export async function requireAuthForOnboarding(
 				.json(apiError("Verification expired. Please verify OTP again."));
 			return;
 		}
-		(req as RequestWithOnboarding).onboardingPending = pending;
+		reqOnboarding.onboardingPending = pending;
 		next();
 		return;
 	}

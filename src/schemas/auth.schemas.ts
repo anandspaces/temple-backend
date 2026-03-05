@@ -56,8 +56,11 @@ export const updateUserSchema = registerSchema
 	.omit({ phoneNumber: true })
 	.partial();
 
-/** Complete onboarding: profile only; identity comes from Bearer token. */
-export const completeOnboardingSchema = registerSchema;
+/** Complete onboarding: profile only; identity (phoneNumber, countryCode) comes from Bearer token. */
+export const completeOnboardingSchema = registerSchema.omit({
+	phoneNumber: true,
+	countryCode: true,
+});
 
 export type SendOtpBody = z.output<typeof sendOtpSchema>;
 export type VerifyOtpBody = z.output<typeof verifyOtpSchema>;

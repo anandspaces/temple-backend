@@ -136,8 +136,6 @@ export const openApiDocument = createDocument({
 					content: {
 						"multipart/form-data": {
 							schema: completeOnboardingSchema,
-							example:
-								"Profile fields plus optional aadhaarFile, profileAvatar",
 						},
 					},
 				},

@@ -117,6 +117,7 @@ export async function verifyOtp(req: ReqWithValidated, res: Response) {
 			const { accessToken, expiresIn, jti } = await signToken({
 				userId,
 				phoneNumber,
+				countryCode: body.countryCode ?? "",
 			});
 			await createSession(userId, jti, expiresIn);
 			return res.status(200).json(
@@ -144,6 +145,7 @@ export async function verifyOtp(req: ReqWithValidated, res: Response) {
 			const { accessToken, expiresIn, jti } = await signToken({
 				userId,
 				phoneNumber: userDoc.phoneNumber,
+				countryCode: userDoc.countryCode ?? "",
 			});
 			await createSession(userId, jti, expiresIn);
 			logger.info(
@@ -175,6 +177,7 @@ export async function verifyOtp(req: ReqWithValidated, res: Response) {
 		const { accessToken, expiresIn, jti } = await signToken({
 			userId,
 			phoneNumber: userDoc.phoneNumber,
+			countryCode: userDoc.countryCode ?? "",
 		});
 		await createSession(userId, jti, expiresIn);
 		return res.status(200).json(
@@ -220,16 +223,12 @@ export async function completeOnboarding(
 	const existingUser = req.onboardingUser;
 
 	if (pending) {
-		if (pending.phoneNumber !== body.phoneNumber) {
-			return res
-				.status(403)
-				.json(apiError("Phone number does not match the verified phone"));
-		}
-
 		const { aadhaarIdFileUrl, profileAvatarUrl } = await getFileUrls(files);
 		const email = (body.email ?? "").trim() || "";
 		const user = await User.create({
 			...body,
+			phoneNumber: req.phoneNumber ?? pending.phoneNumber,
+			countryCode: req.countryCode ?? "",
 			email: email || "",
 			aadhaarIdFileUrl,
 			profileAvatarUrl,
@@ -239,7 +238,7 @@ export async function completeOnboarding(
 		await PendingOnboarding.findByIdAndDelete(pending._id);
 
 		logger.info(
-			{ userId: user._id, phone: maskPhone(body.phoneNumber) },
+			{ userId: user._id, phone: maskPhone(pending.phoneNumber) },
 			"Complete onboarding success (new user)",
 		);
 		try {
@@ -247,6 +246,7 @@ export async function completeOnboarding(
 			const { accessToken, expiresIn, jti } = await signToken({
 				userId,
 				phoneNumber: user.phoneNumber,
+				countryCode: user.countryCode ?? "",
 			});
 			await createSession(userId, jti, expiresIn);
 			return res.status(200).json(
@@ -266,12 +266,6 @@ export async function completeOnboarding(
 	}
 
 	if (existingUser) {
-		if (existingUser.phoneNumber !== body.phoneNumber) {
-			return res
-				.status(403)
-				.json(apiError("Phone number does not match the verified user"));
-		}
-
 		const { aadhaarIdFileUrl, profileAvatarUrl } = await getFileUrls(files);
 		const email = (body.email ?? "").trim() || "";
 		existingUser.set({
@@ -284,7 +278,7 @@ export async function completeOnboarding(
 		await existingUser.save();
 
 		logger.info(
-			{ userId: existingUser._id, phone: maskPhone(body.phoneNumber) },
+			{ userId: existingUser._id, phone: maskPhone(existingUser.phoneNumber) },
 			"Complete onboarding success (resume)",
 		);
 		try {
@@ -292,6 +286,7 @@ export async function completeOnboarding(
 			const { accessToken, expiresIn, jti } = await signToken({
 				userId,
 				phoneNumber: existingUser.phoneNumber,
+				countryCode: existingUser.countryCode ?? "",
 			});
 			await createSession(userId, jti, expiresIn);
 			return res.status(200).json(

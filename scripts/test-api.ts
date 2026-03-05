@@ -107,8 +107,6 @@ async function run(): Promise<void> {
 			form.set("fullName", "Test User");
 			form.set("age", "24");
 			form.set("gender", "male");
-			form.set("phoneNumber", PHONE);
-			form.set("countryCode", COUNTRY_CODE);
 			form.set("residentialAddress", "Test Address");
 			form.set("medicalConditions", "Diabetes");
 			form.set("emergencyContactName", "Emergency");

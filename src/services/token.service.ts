@@ -19,6 +19,7 @@ function expiryToSeconds(expiry: string): number {
 export interface SignTokenPayload {
 	userId: string;
 	phoneNumber?: string;
+	countryCode?: string;
 }
 
 export interface SignTokenResult {
@@ -39,6 +40,7 @@ export async function signToken(
 	const secretKey = new TextEncoder().encode(secret);
 	const accessToken = await new jose.SignJWT({
 		phone: payload.phoneNumber,
+		countryCode: payload.countryCode ?? "",
 	})
 		.setSubject(payload.userId)
 		.setJti(jti)
@@ -59,6 +61,8 @@ export interface VerifyTokenResult {
 	jti?: string;
 	exp?: number;
 	iat?: number;
+	phoneNumber?: string;
+	countryCode?: string;
 }
 
 export async function verifyToken(
@@ -74,7 +78,9 @@ export async function verifyToken(
 		const jti = typeof payload.jti === "string" ? payload.jti : undefined;
 		const exp = typeof payload.exp === "number" ? payload.exp : undefined;
 		const iat = typeof payload.iat === "number" ? payload.iat : undefined;
-		return { userId: sub, jti, exp, iat };
+		const phoneNumber = typeof payload.phone === "string" ? payload.phone : undefined;
+		const countryCode = typeof payload.countryCode === "string" ? payload.countryCode : undefined;
+		return { userId: sub, jti, exp, iat, phoneNumber, countryCode };
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
 		logger.warn({ err: message }, "verifyToken: JWT verification failed");
@@ -142,5 +148,12 @@ export async function verifyTokenWithSession(
 			return null;
 		}
 	}
-	return { userId: payload.userId, jti: payload.jti };
+	return {
+		userId: payload.userId,
+		jti: payload.jti,
+		exp: payload.exp,
+		iat: payload.iat,
+		phoneNumber: payload.phoneNumber,
+		countryCode: payload.countryCode,
+	};
 }
