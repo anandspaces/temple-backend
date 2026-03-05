@@ -118,7 +118,10 @@ export async function verifyTokenWithSession(
 		return null;
 	}
 	if (!payload.jti) {
-		logger.warn("verifyTokenWithSession: token has no jti (old token?)");
+		logger.warn(
+			{ userId: payload.userId },
+			"verifyTokenWithSession: token has no jti (old token?)",
+		);
 		return null;
 	}
 	let session = await Session.findOne({
@@ -144,7 +147,7 @@ export async function verifyTokenWithSession(
 		}
 		if (!session) {
 			logger.warn(
-				{ jti: payload.jti },
+				{ userId: payload.userId, jti: payload.jti },
 				"verifyTokenWithSession: no session or session expired",
 			);
 			return null;

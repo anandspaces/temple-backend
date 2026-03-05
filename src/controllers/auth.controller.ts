@@ -221,6 +221,17 @@ export async function completeOnboarding(
 	const files = req.files ?? {};
 	const pending = req.onboardingPending;
 	const existingUser = req.onboardingUser;
+	logger.info(
+		{
+			hasPending: !!pending,
+			hasExistingUser: !!existingUser,
+			bodyKeys: body ? Object.keys(body) : [],
+			tokenPhoneLast4: req.phoneNumber?.slice(-4) ?? "none",
+			tokenCountryCode: req.countryCode ?? "none",
+			fileKeys: Object.keys(req.files ?? {}),
+		},
+		"complete-onboarding: processing",
+	);
 
 	if (pending) {
 		const { aadhaarIdFileUrl, profileAvatarUrl } = await getFileUrls(files);
@@ -305,6 +316,13 @@ export async function completeOnboarding(
 		}
 	}
 
+	logger.warn(
+		{
+			hasPending: !!pending,
+			hasExistingUser: !!existingUser,
+		},
+		"complete-onboarding: unexpected 401 (no pending or user on req)",
+	);
 	return res.status(401).json(apiError("Unauthorized"));
 }
 

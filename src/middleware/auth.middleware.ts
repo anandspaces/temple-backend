@@ -76,6 +76,15 @@ export async function requireAuthForOnboarding(
 ): Promise<void> {
 	const authHeader = req.headers.authorization;
 	const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+	logger.info(
+		{
+			path: req.path,
+			hasAuthHeader: !!authHeader,
+			hasToken: !!token,
+			tokenLength: token?.length ?? 0,
+		},
+		"complete-onboarding: request",
+	);
 	if (!token) {
 		logger.warn({ path: req.path }, "complete-onboarding auth: no token");
 		res.status(401).json(apiError("Unauthorized"));
@@ -90,6 +99,16 @@ export async function requireAuthForOnboarding(
 		res.status(401).json(apiError("Unauthorized"));
 		return;
 	}
+	logger.info(
+		{
+			path: req.path,
+			userId: payload.userId,
+			jtiPrefix: payload.jti?.slice(0, 8),
+			hasPhone: !!payload.phoneNumber,
+			hasCountryCode: !!payload.countryCode,
+		},
+		"complete-onboarding: token valid",
+	);
 	const reqOnboarding = req as RequestWithOnboarding;
 	reqOnboarding.phoneNumber = payload.phoneNumber;
 	reqOnboarding.countryCode = payload.countryCode ?? "";
@@ -108,6 +127,10 @@ export async function requireAuthForOnboarding(
 
 	const user = await User.findById(objectId);
 	if (user) {
+		logger.info(
+			{ path: req.path, userId, onboardingComplete: user.onboardingComplete },
+			"complete-onboarding: resolved user",
+		);
 		if (user.onboardingComplete) {
 			logger.warn(
 				{ path: req.path, userId },
@@ -123,6 +146,15 @@ export async function requireAuthForOnboarding(
 
 	const pending = await PendingOnboarding.findById(objectId);
 	if (pending) {
+		logger.info(
+			{
+				path: req.path,
+				userId,
+				expiresAt: pending.expiresAt?.toISOString(),
+				now: new Date().toISOString(),
+			},
+			"complete-onboarding: resolved pending",
+		);
 		if (pending.expiresAt && new Date() > pending.expiresAt) {
 			await PendingOnboarding.findByIdAndDelete(objectId);
 			logger.warn(
