@@ -28,12 +28,13 @@ main().catch((err) => {
 	logger.error({ err }, "Uncaught error");
 	process.exit(1);
 });
+import cors from "cors";
 import express = require("express");
-
 import multer from "multer";
 
 export function createApp() {
 	const app = express();
+	app.use(cors());
 	app.use(express.json());
 	app.use(requestLogger);
 
