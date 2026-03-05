@@ -28,8 +28,11 @@ main().catch((err) => {
 	logger.error({ err }, "Uncaught error");
 	process.exit(1);
 });
+
 import cors from "cors";
+
 import express = require("express");
+
 import multer from "multer";
 
 export function createApp() {

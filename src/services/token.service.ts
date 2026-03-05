@@ -78,8 +78,10 @@ export async function verifyToken(
 		const jti = typeof payload.jti === "string" ? payload.jti : undefined;
 		const exp = typeof payload.exp === "number" ? payload.exp : undefined;
 		const iat = typeof payload.iat === "number" ? payload.iat : undefined;
-		const phoneNumber = typeof payload.phone === "string" ? payload.phone : undefined;
-		const countryCode = typeof payload.countryCode === "string" ? payload.countryCode : undefined;
+		const phoneNumber =
+			typeof payload.phone === "string" ? payload.phone : undefined;
+		const countryCode =
+			typeof payload.countryCode === "string" ? payload.countryCode : undefined;
 		return { userId: sub, jti, exp, iat, phoneNumber, countryCode };
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);

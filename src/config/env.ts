@@ -15,8 +15,8 @@ export const env = {
 	/** When set (e.g. "123456"), this OTP is used for all send-otp/register flows for testing. */
 	TEST_OTP: TEST_OTP && TEST_OTP.length >= 6 ? TEST_OTP : undefined,
 	JWT_SECRET: JWT_SECRET || undefined,
-	/** JWT access token expiry (e.g. "7d", "24h"). Default "7d". */
-	JWT_EXPIRES_IN: JWT_EXPIRES_IN || "7d",
+	/** Access token and session lifetime (e.g. "30d", "7d", "24h"). Default "30d". */
+	JWT_EXPIRES_IN: JWT_EXPIRES_IN || "30d",
 	/** Backend base URL for absolute file URLs (e.g. https://api.example.com). When set, profileAvatarUrl and aadhaarIdFileUrl in responses are prefixed with this. */
 	API_BASE_URL: API_BASE_URL?.replace(/\/$/, "") || "",
 } as const;
