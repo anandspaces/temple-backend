@@ -3,7 +3,9 @@ import { connectDb } from "./src/config/db.ts";
 import { env } from "./src/config/env.ts";
 import logger from "./src/config/logger.ts";
 import "./src/models/Session.ts";
+import swaggerUi from "swagger-ui-express";
 import { requestLogger } from "./src/middleware/requestLogger.middleware.ts";
+import { openApiDocument } from "./src/openapi.ts";
 import { authRoutes } from "./src/routes/auth.routes.ts";
 import { userRoutes } from "./src/routes/user.routes.ts";
 
@@ -40,6 +42,14 @@ export function createApp() {
 	});
 
 	app.use("/uploads", express.static("uploads"));
+	app.get("/api-docs/openapi.json", (_req, res) => {
+		res.json(openApiDocument);
+	});
+	app.use(
+		"/docs",
+		swaggerUi.serve,
+		swaggerUi.setup(openApiDocument, { customSiteTitle: "Temple API" }),
+	);
 	app.use("/auth", authRoutes);
 	app.use("/users", userRoutes);
 
